@@ -1,14 +1,14 @@
 {% block body %}
-<h1>Login</h1>
+<h1>Logar</h1>
 <form action="{{ path('login') }}" method="POST">
     <div>
-        <label for="username">Username</label>
+        <label for="username">Usuário</label>
         <input type="text" id="username" name="username" required>
     </div>
     <div>
-        <label for="password">Password</label>
+        <label for="password">Senha</label>
         <input type="password" id="password" name="password" required>
     </div>
-    <button type="submit">Login</button>
+    <button type="submit">Logar</button>
 </form>
 {% endblock %}
