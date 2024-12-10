@@ -14,4 +14,10 @@ class AuthController extends AbstractController
     {
         return $this->render('auth/login.html.twig');
     }
+
+    #[Route('/register', name: 'register')]
+    public function register(Request $request): Response
+    {
+        return $this->render('auth/register.html.twig');
+    }
 }
