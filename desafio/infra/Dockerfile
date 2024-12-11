@@ -7,7 +7,12 @@ RUN apt update && apt install -y \
     zip \
     unzip \
     nginx \
-    supervisor
+    supervisor \
+    vim \
+    && apt-get clean
+
+RUN add-apt-repository ppa:ondrej/php -y \
+    && apt-get update
 
 RUN apt install -y \
     php8.3 \
@@ -15,20 +20,17 @@ RUN apt install -y \
     php8.3-cli \
     php8.3-mbstring \
     php8.3-xml \
-    php8.3-mysql \
     php8.3-curl \
     php8.3-zip \
     php8.3-intl \
     php8.3-gd \
     php8.3-bcmath \
     php8.3-soap \
-    php8.3-opcache
+    php8.3-opcache \
+    php8.3-pgsql
 
-RUN apt-get update && apt-get install -y \
-    netcat-openbsd \
-    default-mysql-client \
-    libreoffice \
-    vim \
+RUN apt-get update && apt install -y \
+    libpq-dev \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
