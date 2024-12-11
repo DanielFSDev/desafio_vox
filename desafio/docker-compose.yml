@@ -1,0 +1,21 @@
+version: '2'
+
+services:
+  app_php:
+    build: ./infra/.
+    container_name: app
+    volumes:
+      - ./:/var/www/html
+    ports:
+      - "8080:80"
+
+  app_db:
+    image: postgres:15
+    container_name: app_db
+    restart: unless-stopped
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_DB: app_db
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
