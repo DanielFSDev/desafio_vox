@@ -41,4 +41,35 @@ class AuthController extends AbstractController
             return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
+
+    #[Route('/login', name: 'login', methods: ['POST'])]
+    public function login(
+        Request $request,
+        UserPasswordHasherInterface $passwordEncoder,
+        EntityManagerInterface $entityManager
+    ): JsonResponse {
+        $data = json_decode($request->getContent(), true);
+        $username = $data['username'] ?? null;
+        $password = $data['password'] ?? null;
+        if (!$username || !$password) {
+            return new JsonResponse(
+                ['error' => 'Nome do usuário e senha são obrigatórios.'],
+                Response::HTTP_BAD_REQUEST
+            );
+        }
+        $user = $entityManager->getRepository(User::class)->findOneBy(['username' => $username]);
+        if (!$user) {
+            return new JsonResponse(
+                ['error' => 'Conta não encontrada'],
+                Response::HTTP_UNAUTHORIZED
+            );
+        }
+        if (!$passwordEncoder->isPasswordValid($user, $password)) {
+            return new JsonResponse(
+                ['error' => 'Nome do usuário ou senha estão incorretos.'],
+                Response::HTTP_UNAUTHORIZED
+            );
+        }
+        return new JsonResponse(['message' => 'Logado com sucesso.'], Response::HTTP_OK);
+    }
 }
