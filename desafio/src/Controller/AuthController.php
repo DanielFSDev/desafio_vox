@@ -21,11 +21,15 @@ class AuthController extends AbstractController
     ): JsonResponse {
         $data = json_decode($request->getContent(), true);
         if (empty($data['username']) || empty($data['email']) || empty($data['password'])) {
-            return new JsonResponse(['error' => 'Você não preencheu todos os campos.'], Response::HTTP_BAD_REQUEST);
+            return new JsonResponse([
+                'error' => 'Você não preencheu todos os campos.'
+            ], Response::HTTP_BAD_REQUEST);
         }
         $existingUser = $entityManager->getRepository(User::class)->findOneBy(['username' => $data['username']]);
         if ($existingUser) {
-            return new JsonResponse(['error' => 'Já existe alguém com esse nome de usuário'], Response::HTTP_CONFLICT);
+            return new JsonResponse([
+                'error' => 'Já existe alguém com esse nome de usuário'
+            ], Response::HTTP_CONFLICT);
         }
         try {
             $user = new User();
