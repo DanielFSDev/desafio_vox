@@ -109,4 +109,36 @@ class CompanyController extends AbstractController
             'owner' => $company->getOwner()->getUsername()
         ], Response::HTTP_OK);
     }
+
+    #[Route('/empresa/{id}', methods: ['PUT'])]
+    public function updateCompany(
+        int $id,
+        Request $request
+    ): JsonResponse {
+        $company = $this->entityManager->getRepository(Company::class)->find($id);
+        if (!$company) {
+            throw new ValidationException('Empresa não encontrada.');
+        }
+        $data = json_decode($request->getContent(), true);
+        $name = $data['name'] ?? null;
+        $address = $data['address'] ?? null;
+        if (!$name && !$address) {
+            throw new ValidationException('Nenhum dado para atualizar.');
+        }
+        try {
+            if ($name) {
+                $company->setName($name);
+            }
+            if ($address) {
+                $company->setAddress($address);
+            }
+            $this->entityManager->flush();
+            return new JsonResponse(
+                ['message' => 'Empresa atualizada com sucesso.'],
+                Response::HTTP_OK
+            );
+        } catch (\Exception $e) {
+            throw new ValidationException($e->getMessage());
+        }
+    }
 }
