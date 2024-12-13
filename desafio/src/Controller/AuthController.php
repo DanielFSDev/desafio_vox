@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Entity\User;
+use App\Exception\ValidationException;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
@@ -13,67 +14,95 @@ use Doctrine\ORM\EntityManagerInterface;
 
 class AuthController extends AbstractController
 {
-    #[Route('/register', name: 'register', methods: ['POST'])]
-    public function register(
-        Request $request,
-        UserPasswordHasherInterface $passwordHasher,
-        EntityManagerInterface $entityManager
-    ): JsonResponse {
+    public function __construct(
+        public UserPasswordHasherInterface $passwordHasher,
+        public EntityManagerInterface $entityManager
+    ) {
+    }
+
+    #[Route('/registrar', name: 'registrar_usuario', methods: ['POST'])]
+    public function register(Request $request): JsonResponse {
         $data = json_decode($request->getContent(), true);
-        if (empty($data['username']) || empty($data['email']) || empty($data['password'])) {
-            return new JsonResponse([
-                'error' => 'Você não preencheu todos os campos.'
-            ], Response::HTTP_BAD_REQUEST);
-        }
-        $existingUser = $entityManager->getRepository(User::class)->findOneBy(['username' => $data['username']]);
-        if ($existingUser) {
-            return new JsonResponse([
-                'error' => 'Já existe alguém com esse nome de usuário'
-            ], Response::HTTP_CONFLICT);
-        }
+        $userName = $data['username'];
+        $userPassword = $data['password'];
+        $userEmail = $data['email'];
+        $this->validFieldsRegister($userName, $userEmail, $userPassword);
+        $this->isUsernameAndEmailAvailable($userName, $userEmail);
         try {
-            $user = new User();
-            $user->setUsername($data['username']);
-            $user->setEmail($data['email']);
-            $user->setRoles(['ROLE_USER']);
-            $hashedPassword = $passwordHasher->hashPassword($user, $data['password']);
-            $user->setPassword($hashedPassword);
-            $entityManager->persist($user);
-            $entityManager->flush();
-            return new JsonResponse(['message' => 'User created successfully'], Response::HTTP_CREATED);
+            $user = $this->cadasterUser($userName, $userEmail, $userPassword);
+            return new JsonResponse([
+                'message' => 'Usuário criado com sucesso.',
+                'codUser' => $user->getId()
+            ], Response::HTTP_CREATED);
         } catch (\Exception $e) {
-            return new JsonResponse(['error' => $e->getMessage()], Response::HTTP_INTERNAL_SERVER_ERROR);
+            throw new ValidationException($e->getMessage());
         }
     }
 
-    #[Route('/login', name: 'login', methods: ['POST'])]
+    private function isUsernameAndEmailAvailable(string $userName, string $userEmail): void
+    {
+        $userWithUserNameOrEmail = $this->entityManager->getRepository(User::class)->findOneBy([
+            'username' => $userName,
+            'email' => $userEmail
+        ]);
+        if ($userWithUserNameOrEmail) {
+            throw new ValidationException('Já existe alguém com esse nome ou e-mail.');
+        }
+    }
+
+    private function validFieldsRegister(string $userName, string $userEmail, string $userPassword): void
+    {
+        if (empty($userName) || empty($userEmail) || empty($userPassword)) {
+            throw new ValidationException('Você não preencheu todos os campos.');
+        }
+        if (!filter_var($userEmail, FILTER_VALIDATE_EMAIL)) {
+            throw new ValidationException('O e-mail informado é inválido.');
+        }
+    }
+
+    private function cadasterUser(string $userName, string $email, string $password): User
+    {
+        $user = new User();
+        $user->setUsername($userName);
+        $user->setEmail($email);
+        $user->setRoles(['ROLE_USER']);
+        $hashedPassword = $this->passwordHasher->hashPassword($user, $password);
+        $user->setPassword($hashedPassword);
+        $this->entityManager->persist($user);
+        $this->entityManager->flush();
+        return $user;
+    }
+
+    #[Route('/logar', name: 'logar', methods: ['POST'])]
     public function login(
         Request $request,
-        UserPasswordHasherInterface $passwordEncoder,
         EntityManagerInterface $entityManager
     ): JsonResponse {
         $data = json_decode($request->getContent(), true);
-        $username = $data['username'] ?? null;
+        $userName = $data['username'] ?? null;
         $password = $data['password'] ?? null;
-        if (!$username || !$password) {
-            return new JsonResponse(
-                ['error' => 'Nome do usuário e senha são obrigatórios.'],
-                Response::HTTP_BAD_REQUEST
-            );
-        }
-        $user = $entityManager->getRepository(User::class)->findOneBy(['username' => $username]);
-        if (!$user) {
-            return new JsonResponse(
-                ['error' => 'Conta não encontrada'],
-                Response::HTTP_UNAUTHORIZED
-            );
-        }
-        if (!$passwordEncoder->isPasswordValid($user, $password)) {
-            return new JsonResponse(
-                ['error' => 'Nome do usuário ou senha estão incorretos.'],
-                Response::HTTP_UNAUTHORIZED
-            );
-        }
+        $this->validateUsernameAndPassword($userName, $password);
+        $user = $this->findUserByUsername($userName, $entityManager);
+        $this->validatePassword($user, $password);
         return new JsonResponse(['message' => 'Logado com sucesso.'], Response::HTTP_OK);
+    }
+
+    private function validateUsernameAndPassword(string $username, string $password): void
+    {
+        if (empty($username) || empty($password)) {
+            throw new ValidationException('Nome do usuário e senha são obrigatórios.');
+        }
+    }
+
+    private function findUserByUsername(string $username, EntityManagerInterface $entityManager): ?User
+    {
+        return $entityManager->getRepository(User::class)->findOneBy(['username' => $username]);
+    }
+
+    private function validatePassword(User $user, string $password): void
+    {
+        if (!$this->passwordHasher->isPasswordValid($user, $password)) {
+            throw new ValidationException('Senha incorreta.');
+        }
     }
 }
