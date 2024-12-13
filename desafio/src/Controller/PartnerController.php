@@ -67,4 +67,27 @@ class PartnerController extends AbstractController
         $entityManager->flush();
         return new JsonResponse(['Sócio adicionado com sucesso: ', $user->getId()], Response::HTTP_OK);
     }
+
+    #[Route('/empresa/{cod_empresa}/partner/{cod_user}', methods: ['DELETE'])]
+    public function deletePartner(
+        int $cod_empresa,
+        int $cod_user,
+        EntityManagerInterface $entityManager
+    ): JsonResponse {
+        $company = $entityManager->getRepository(Company::class)->find($cod_empresa);
+        if (!$company) {
+            throw $this->createNotFoundException('Empresa não encontrada.');
+        }
+        $user = $entityManager->getRepository(User::class)->find($cod_user);
+        if (!$user) {
+            throw $this->createNotFoundException('Não foi encontrado esse usuário.');
+        }
+        if (!$company->getPartners()->contains($user)) {
+            throw $this->createNotFoundException('Sócio não vinculado à empresa.');
+        }
+        $company->getPartners()->removeElement($user);
+        $entityManager->persist($company);
+        $entityManager->flush();
+        return new JsonResponse(['Sócio desvinculado: ', $user->getId(), 'empresa' => $company->getName()], Response::HTTP_OK);
+    }
 }
